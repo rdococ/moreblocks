@@ -96,7 +96,7 @@ function circular_saw:get_cost(inv, stackname)
 	end
 end
 
-function circular_saw:get_output_inv(modname, material, amount, max)
+function circular_saw:get_output_inv(modname, material, meta, amount, max)
 	if (not max or max < 1 or max > 99) then max = 99 end
 
 	local list = {}
@@ -114,7 +114,9 @@ function circular_saw:get_output_inv(modname, material, amount, max)
 		local nodename = modname .. ":" .. t[1] .. "_" .. material .. t[2]
 		if  minetest.registered_nodes[nodename] then
 			pos = pos + 1
-			list[pos] = nodename .. " " .. balance
+			list[pos] = ItemStack(nodename .. " " .. balance)
+			
+			list[pos]:get_meta():from_table(meta:to_table())
 		end
 	end
 	return list
@@ -170,6 +172,7 @@ function circular_saw:update_inventory(pos, amount)
 
 	end
 	local node_name = stack:get_name() or ""
+	local node_meta = stack:get_meta()
 	local node_def = stack:get_definition()
 	local name_parts = circular_saw.known_nodes[node_name] or ""
 	local modname  = name_parts[1] or ""
@@ -181,10 +184,10 @@ function circular_saw:update_inventory(pos, amount)
 	else
 		owned_by = ""
 	end
-
-	inv:set_list("input", { -- Display as many full blocks as possible:
-		node_name.. " " .. math.floor(amount / 8)
-	})
+	
+	local input_stack = ItemStack(node_name.. " " .. math.floor(amount / 8)) -- Display as many full blocks as possible.
+	input_stack:get_meta():from_table(node_meta:to_table())
+	inv:set_list("input", {input_stack})
 
 	-- The stairnodes made of default nodes use moreblocks namespace, other mods keep own:
 	if modname == "default" then
@@ -194,12 +197,13 @@ function circular_saw:update_inventory(pos, amount)
 	--	.. material .. " with " .. (amount) .. " microblocks.")
 
 	-- 0-7 microblocks may remain left-over:
-	inv:set_list("micro", {
-		modname .. ":micro_" .. material .. " " .. (amount % 8)
-	})
+	local micro_stack = ItemStack(modname .. ":micro_" .. material .. " " .. (amount % 8)) -- Display as many full blocks as possible.
+	micro_stack:get_meta():from_table(node_meta:to_table())
+	inv:set_list("micro", {micro_stack})
+	
 	-- Display:
 	inv:set_list("output",
-		self:get_output_inv(modname, material, amount,
+		self:get_output_inv(modname, material, node_meta, amount,
 				meta:get_int("max_offered")))
 	-- Store how many microblocks are available:
 	meta:set_int("anz", amount)
